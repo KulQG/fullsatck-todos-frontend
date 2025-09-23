@@ -1,0 +1,11 @@
+.form-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-content textarea {
+  min-width: 488px;
+  max-width: 488px;
+  min-height: 50px;
+}

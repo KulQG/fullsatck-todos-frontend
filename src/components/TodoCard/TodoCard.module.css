@@ -1,0 +1,40 @@
+.todo-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border: 1px solid var(--main-color);
+  border-radius: 20px;
+  padding: 16px;
+}
+
+.todo-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 30px;
+  overflow: hidden;
+}
+
+.todo-card header h3 {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  margin: 0;
+}
+
+.buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.todo-card button {
+  border: 1px solid var(--main-color);
+  border-radius: 10px;
+  cursor: pointer;
+  height: 38px;
+}
+
+.todo-card button > svg {
+  width: 16px !important;
+  height: 16px !important;
+}
