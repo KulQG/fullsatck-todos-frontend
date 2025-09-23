@@ -5,47 +5,44 @@ import type { ITodo } from "../types/types";
 import { useModalStore } from "./useModalStore";
 import type { CreateTodoRequest } from "../api/api.types";
 import { EditTodoForm } from "../components/EditCardContent/EditCardContent";
-import { TABS } from "../constants";
+import { ALL_TABS, TABS } from "../constants";
+
+const QUERY_TODOS_KEY = 'todos'
 
 export const useTodos = ({ currentTab }: { currentTab: TABS }) => {
   const { openModal, closeModal } = useModalStore();
   const queryClient = useQueryClient();
 
+  // === GET ===
   const { data: todosData, isLoading: todosLoading } = useQuery({
-    queryKey: ["todos", currentTab],
-    queryFn: async () =>
+    queryKey: [QUERY_TODOS_KEY, currentTab],
+    queryFn: () =>
       api.getTodos(
         currentTab !== TABS.ALL
           ? { completed: currentTab === TABS.DONE }
           : undefined
       ),
+    staleTime: 1000 * 60,
+    gcTime: 1000 * 60 * 5,
   });
 
+  // === CREATE ===
   const { mutate: createTodo } = useMutation({
-    mutationKey: ["createTodo"],
     mutationFn: (todoData: CreateTodoRequest) => api.createTodo(todoData),
     onSuccess: (newTodo) => {
-      queryClient.setQueryData<ITodo[]>(["todos", TABS.ALL], (old = []) => [
+      queryClient.setQueryData<ITodo[]>([QUERY_TODOS_KEY, TABS.ALL], (old = []) => [
         newTodo,
         ...old,
       ]);
-
-      if (newTodo.completed) {
-        queryClient.setQueryData<ITodo[]>(["todos", TABS.DONE], (old = []) => [
-          newTodo,
-          ...old,
-        ]);
-      } else {
-        queryClient.setQueryData<ITodo[]>(
-          ["todos", TABS.UNDONE],
-          (old = []) => [newTodo, ...old]
-        );
-      }
+      queryClient.setQueryData<ITodo[]>([QUERY_TODOS_KEY, newTodo.completed ? TABS.DONE : TABS.UNDONE], (old = []) => [
+        newTodo,
+        ...old,
+      ]);
     },
   });
 
+  // === UPDATE ===
   const { mutate: editTodo } = useMutation({
-    mutationKey: ["updateTodo"],
     mutationFn: (todoData: ITodo) =>
       api.updateTodo(todoData.id, {
         title: todoData.title,
@@ -53,50 +50,59 @@ export const useTodos = ({ currentTab }: { currentTab: TABS }) => {
         completed: todoData.completed,
       }),
     onMutate: async (updatedTodo) => {
-      await queryClient.cancelQueries({ queryKey: ["todos"] });
+      const prevData = {} as Record<TABS, ITodo[] | undefined>;
 
-      const prevTodos = queryClient.getQueryData<ITodo[]>(["todos"]);
+      for (const tab of ALL_TABS) {
+        await queryClient.cancelQueries({ queryKey: [QUERY_TODOS_KEY, tab] });
+        prevData[tab] = queryClient.getQueryData<ITodo[]>([QUERY_TODOS_KEY, tab]);
+        queryClient.setQueryData<ITodo[]>([QUERY_TODOS_KEY, tab], (old = []) =>
+          old.map((t) => (t.id === updatedTodo.id ? updatedTodo : t))
+        );
+      }
 
-      queryClient.setQueryData<ITodo[]>(["todos"], (old = []) =>
-        old.map((t) => (t.id === updatedTodo.id ? updatedTodo : t))
-      );
-
-      return { prevTodos };
+      return { prevData };
     },
-    onError: (_err, _newTodo, context) => {
-      if (context?.prevTodos) {
-        queryClient.setQueryData(["todos"], context.prevTodos);
+    onError: (_err, _todo, context) => {
+      if (context?.prevData) {
+        for (const tab of Object.keys(context.prevData) as TABS[]) {
+          queryClient.setQueryData([QUERY_TODOS_KEY, tab], context.prevData[tab]);
+        }
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_TODOS_KEY] });
     },
   });
 
+  // === DELETE ===
   const { mutate: deleteTodo } = useMutation({
-    mutationKey: ["deleteTodo"],
     mutationFn: (todoId: number) => api.deleteTodo(todoId),
     onMutate: async (todoId) => {
-      await queryClient.cancelQueries({ queryKey: ["todos"] });
+      const prevData = {} as Record<TABS, ITodo[] | undefined>;
 
-      const prevTodos = queryClient.getQueryData<ITodo[]>(["todos"]);
+      for (const tab of ALL_TABS) {
+        await queryClient.cancelQueries({ queryKey: [QUERY_TODOS_KEY, tab] });
+        prevData[tab] = queryClient.getQueryData<ITodo[]>([QUERY_TODOS_KEY, tab]);
+        queryClient.setQueryData<ITodo[]>([QUERY_TODOS_KEY, tab], (old = []) =>
+          old.filter((t) => t.id !== todoId)
+        );
+      }
 
-      queryClient.setQueryData<ITodo[]>(["todos"], (old = []) =>
-        old.filter((t) => t.id !== todoId)
-      );
-
-      return { prevTodos };
+      return { prevData };
     },
     onError: (_err, _id, context) => {
-      if (context?.prevTodos) {
-        queryClient.setQueryData(["todos"], context.prevTodos);
+      if (context?.prevData) {
+        for (const tab of Object.keys(context.prevData) as TABS[]) {
+          queryClient.setQueryData([QUERY_TODOS_KEY, tab], context.prevData[tab]);
+        }
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_TODOS_KEY] });
     },
   });
 
+  // === Handlers ===
   const handleCreateTodo = useCallback(() => {
     openModal({
       title: "Создание новой карточки",
