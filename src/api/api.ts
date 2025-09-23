@@ -8,7 +8,7 @@ import type {
 class Api {
   baseUrl: string;
   constructor() {
-    this.baseUrl = import.meta.env.VITE_API_ADDRESS;
+    this.baseUrl = import.meta.env.VITE_API_ADDRESS || "http://localhost:3002/api";
   }
 
   private async request<T>(
