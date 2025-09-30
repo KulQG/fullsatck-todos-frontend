@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/api";
 import type { ITodo } from "../types/types";
@@ -7,7 +6,7 @@ import type { CreateTodoRequest } from "../api/api.types";
 import { EditTodoForm } from "../components/EditCardContent/EditCardContent";
 import { ALL_TABS, TABS } from "../constants";
 
-const QUERY_TODOS_KEY = 'todos'
+const QUERY_TODOS_KEY = "todos";
 
 export const useTodos = ({ currentTab }: { currentTab: TABS }) => {
   const { openModal, closeModal } = useModalStore();
@@ -30,14 +29,14 @@ export const useTodos = ({ currentTab }: { currentTab: TABS }) => {
   const { mutate: createTodo } = useMutation({
     mutationFn: (todoData: CreateTodoRequest) => api.createTodo(todoData),
     onSuccess: (newTodo) => {
-      queryClient.setQueryData<ITodo[]>([QUERY_TODOS_KEY, TABS.ALL], (old = []) => [
-        newTodo,
-        ...old,
-      ]);
-      queryClient.setQueryData<ITodo[]>([QUERY_TODOS_KEY, newTodo.completed ? TABS.DONE : TABS.UNDONE], (old = []) => [
-        newTodo,
-        ...old,
-      ]);
+      queryClient.setQueryData<ITodo[]>(
+        [QUERY_TODOS_KEY, TABS.ALL],
+        (old = []) => [newTodo, ...old]
+      );
+      queryClient.setQueryData<ITodo[]>(
+        [QUERY_TODOS_KEY, newTodo.completed ? TABS.DONE : TABS.UNDONE],
+        (old = []) => [newTodo, ...old]
+      );
     },
   });
 
@@ -54,7 +53,10 @@ export const useTodos = ({ currentTab }: { currentTab: TABS }) => {
 
       for (const tab of ALL_TABS) {
         await queryClient.cancelQueries({ queryKey: [QUERY_TODOS_KEY, tab] });
-        prevData[tab] = queryClient.getQueryData<ITodo[]>([QUERY_TODOS_KEY, tab]);
+        prevData[tab] = queryClient.getQueryData<ITodo[]>([
+          QUERY_TODOS_KEY,
+          tab,
+        ]);
         queryClient.setQueryData<ITodo[]>([QUERY_TODOS_KEY, tab], (old = []) =>
           old.map((t) => (t.id === updatedTodo.id ? updatedTodo : t))
         );
@@ -65,7 +67,10 @@ export const useTodos = ({ currentTab }: { currentTab: TABS }) => {
     onError: (_err, _todo, context) => {
       if (context?.prevData) {
         for (const tab of Object.keys(context.prevData) as TABS[]) {
-          queryClient.setQueryData([QUERY_TODOS_KEY, tab], context.prevData[tab]);
+          queryClient.setQueryData(
+            [QUERY_TODOS_KEY, tab],
+            context.prevData[tab]
+          );
         }
       }
     },
@@ -82,7 +87,10 @@ export const useTodos = ({ currentTab }: { currentTab: TABS }) => {
 
       for (const tab of ALL_TABS) {
         await queryClient.cancelQueries({ queryKey: [QUERY_TODOS_KEY, tab] });
-        prevData[tab] = queryClient.getQueryData<ITodo[]>([QUERY_TODOS_KEY, tab]);
+        prevData[tab] = queryClient.getQueryData<ITodo[]>([
+          QUERY_TODOS_KEY,
+          tab,
+        ]);
         queryClient.setQueryData<ITodo[]>([QUERY_TODOS_KEY, tab], (old = []) =>
           old.filter((t) => t.id !== todoId)
         );
@@ -93,7 +101,10 @@ export const useTodos = ({ currentTab }: { currentTab: TABS }) => {
     onError: (_err, _id, context) => {
       if (context?.prevData) {
         for (const tab of Object.keys(context.prevData) as TABS[]) {
-          queryClient.setQueryData([QUERY_TODOS_KEY, tab], context.prevData[tab]);
+          queryClient.setQueryData(
+            [QUERY_TODOS_KEY, tab],
+            context.prevData[tab]
+          );
         }
       }
     },
@@ -103,7 +114,7 @@ export const useTodos = ({ currentTab }: { currentTab: TABS }) => {
   });
 
   // === Handlers ===
-  const handleCreateTodo = useCallback(() => {
+  const handleCreateTodo = () => {
     openModal({
       title: "Создание новой карточки",
       content: (
@@ -115,54 +126,45 @@ export const useTodos = ({ currentTab }: { currentTab: TABS }) => {
         />
       ),
     });
-  }, [closeModal, createTodo, openModal]);
+  };
 
-  const handleEditTodo = useCallback(
-    (data: ITodo) => {
-      openModal({
-        title: "Редактирование карточки",
-        content: (
-          <EditTodoForm
-            submitFn={(formData) => {
-              editTodo({ ...data, ...formData });
+  const handleEditTodo = (data: ITodo) => {
+    openModal({
+      title: "Редактирование карточки",
+      content: (
+        <EditTodoForm
+          submitFn={(formData) => {
+            editTodo({ ...data, ...formData });
+            closeModal();
+          }}
+          defaultValues={{ title: data.title, description: data.description }}
+        />
+      ),
+    });
+  };
+
+  const handleDeleteTodo = (todo: ITodo) => {
+    openModal({
+      title: `Удалить задачу ${todo.title}?`,
+      content: (
+        <div>
+          <button onClick={closeModal}>Отмена</button>
+          <button
+            onClick={() => {
+              deleteTodo(todo.id);
               closeModal();
             }}
-            defaultValues={{ title: data.title, description: data.description }}
-          />
-        ),
-      });
-    },
-    [closeModal, editTodo, openModal]
-  );
+          >
+            Удалить
+          </button>
+        </div>
+      ),
+    });
+  };
 
-  const handleDeleteTodo = useCallback(
-    (todo: ITodo) => {
-      openModal({
-        title: `Удалить задачу ${todo.title}?`,
-        content: (
-          <div>
-            <button onClick={closeModal}>Отмена</button>
-            <button
-              onClick={() => {
-                deleteTodo(todo.id);
-                closeModal();
-              }}
-            >
-              Удалить
-            </button>
-          </div>
-        ),
-      });
-    },
-    [closeModal, deleteTodo, openModal]
-  );
-
-  const handleToggleCompleteTodo = useCallback(
-    (todo: ITodo) => {
-      editTodo(todo);
-    },
-    [editTodo]
-  );
+  const handleToggleCompleteTodo = (todo: ITodo) => {
+    editTodo(todo);
+  };
 
   return {
     todosData,

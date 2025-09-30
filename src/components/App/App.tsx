@@ -1,7 +1,7 @@
 import { TodoCard } from "../TodoCard/TodoCard";
 import { useTodos } from "../../hooks/useTodos";
 import { Tabs } from "../Tabs/Tabs";
-import { TABS_ARR, TABS } from "../../constants";
+import { TABS_SELECT_OPTIONS, TABS } from "../../constants";
 import { useState } from "react";
 
 function App() {
@@ -32,7 +32,7 @@ function App() {
           </button>
 
           <Tabs
-            tabs={TABS_ARR}
+            tabs={TABS_SELECT_OPTIONS}
             defaultTab={currenFilter}
             onChange={(tab) => setCurrentFilter(tab)}
           />
